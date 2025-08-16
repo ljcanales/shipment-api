@@ -4,6 +4,7 @@ from typing import List
 from pydantic import BaseModel
 
 from app.data.domain.tracking import TrackingStatus
+from app.data.domain.courier import Courier
 
 
 class TrackingEvent(BaseModel):
@@ -13,7 +14,7 @@ class TrackingEvent(BaseModel):
 
 class TrackingResponse(BaseModel):
     tracking_number: str
-    courier: str
+    courier: Courier
     status: TrackingStatus
     last_updated: datetime
     events: List[TrackingEvent] = []
