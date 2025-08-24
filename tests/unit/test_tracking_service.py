@@ -10,3 +10,4 @@ async def test_stub_provider_tracks():
     resp = await service.track("123", Courier.STUB)
     assert resp.tracking_number == "123"
     assert resp.courier == Courier.STUB
+    await service.aclose()
