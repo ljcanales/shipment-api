@@ -7,8 +7,14 @@ from .base import Provider
 
 
 class StubProvider(Provider):
+    """Simple provider that returns static tracking data for testing."""
+
     async def track(self, tracking_number: str) -> TrackingResponse:
-        event = TrackingEvent(description="Package received", timestamp=datetime.utcnow())
+        """Return a mock tracking response for ``tracking_number``."""
+
+        event = TrackingEvent(
+            description="Package received", timestamp=datetime.utcnow()
+        )
         return TrackingResponse(
             tracking_number=tracking_number,
             courier=Courier.STUB,

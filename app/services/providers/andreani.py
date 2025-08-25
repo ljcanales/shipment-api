@@ -11,11 +11,13 @@ from .base import Provider
 
 
 class AndreaniProvider(Provider):
-    """Provider implementation for Andreani courier."""
+    """Provider implementation for the Andreani courier service."""
 
     DEFAULT_BASE_URL = "https://apidestinatarios.andreani.com"
 
     def __init__(self) -> None:
+        """Configure the HTTP client used to communicate with Andreani's API."""
+
         base_url = os.getenv("ANDREANI_BASE_URL", self.DEFAULT_BASE_URL)
         timeout = httpx.Timeout(
             connect=float(os.getenv("ANDREANI_CONNECT_TIMEOUT", "5")),
@@ -26,6 +28,8 @@ class AndreaniProvider(Provider):
         self._client = httpx.AsyncClient(base_url=base_url, timeout=timeout)
 
     async def track(self, tracking_number: str) -> TrackingResponse:
+        """Fetch tracking events for ``tracking_number`` from Andreani's API."""
+
         response = await self._client.get(f"/api/envios/{tracking_number}/trazas")
         response.raise_for_status()
         data = response.json()
@@ -34,7 +38,9 @@ class AndreaniProvider(Provider):
         for item in data or []:
             description = item["estado"]
             try:
-                timestamp = datetime.strptime(f"{item['fecha']['dia']} {item['fecha']['hora']}", "%d-%m-%Y %H:%M")
+                timestamp = datetime.strptime(
+                    f"{item['fecha']['dia']} {item['fecha']['hora']}", "%d-%m-%Y %H:%M"
+                )
             except ValueError:
                 timestamp = datetime.utcnow()
             events.append(TrackingEvent(description=description, timestamp=timestamp))
@@ -59,4 +65,6 @@ class AndreaniProvider(Provider):
         )
 
     async def aclose(self) -> None:
+        """Close the underlying HTTP client session."""
+
         await self._client.aclose()
