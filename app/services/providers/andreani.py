@@ -1,3 +1,4 @@
+import logging
 import os
 from datetime import datetime
 from typing import List
@@ -7,7 +8,10 @@ import httpx
 from app.data.domain.courier import Courier
 from app.data.domain.tracking import TrackingStatus
 from app.data.response.tracking_response import TrackingResponse, TrackingEvent
-from .base import Provider
+from .base import Provider, ProviderError
+
+
+logger = logging.getLogger(__name__)
 
 
 class AndreaniProvider(Provider):
@@ -26,15 +30,24 @@ class AndreaniProvider(Provider):
         self._client = httpx.AsyncClient(base_url=base_url, timeout=timeout)
 
     async def track(self, tracking_number: str) -> TrackingResponse:
-        response = await self._client.get(f"/api/envios/{tracking_number}/trazas")
-        response.raise_for_status()
-        data = response.json()
+        """Retrieve tracking information from Andreani."""
+        try:
+            response = await self._client.get(
+                f"/api/envios/{tracking_number}/trazas"
+            )
+            response.raise_for_status()
+            data = response.json()
+        except httpx.HTTPError as exc:
+            logger.exception("Andreani request failed")
+            raise ProviderError("Andreani request failed") from exc
 
         events: List[TrackingEvent] = []
         for item in data or []:
             description = item["estado"]
             try:
-                timestamp = datetime.strptime(f"{item['fecha']['dia']} {item['fecha']['hora']}", "%d-%m-%Y %H:%M")
+                timestamp = datetime.strptime(
+                    f"{item['fecha']['dia']} {item['fecha']['hora']}", "%d-%m-%Y %H:%M"
+                )
             except ValueError:
                 timestamp = datetime.utcnow()
             events.append(TrackingEvent(description=description, timestamp=timestamp))

@@ -1,7 +1,9 @@
 import httpx
+import logging
 import pytest
 
 from app.services.providers.andreani import AndreaniProvider
+from app.services.providers.base import ProviderError
 
 
 class DummyResponse:
@@ -47,3 +49,27 @@ async def test_andreani_provider_uses_env_configuration(monkeypatch):
     assert timeout.pool == 4.0
     assert captured["closed"] is True
 
+
+
+@pytest.mark.asyncio
+async def test_andreani_provider_raises_provider_error(monkeypatch, caplog):
+    class DummyAsyncClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def get(self, url):
+            raise httpx.RequestError("boom")
+
+        async def aclose(self):
+            pass
+
+    monkeypatch.setattr(httpx, "AsyncClient", DummyAsyncClient)
+
+    provider = AndreaniProvider()
+
+    with caplog.at_level(logging.ERROR):
+        with pytest.raises(ProviderError) as exc:
+            await provider.track("CODE123")
+
+    assert isinstance(exc.value.__cause__, httpx.RequestError)
+    assert any("Andreani request failed" in record.message for record in caplog.records)
