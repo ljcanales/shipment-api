@@ -16,10 +16,12 @@ class JsonFormatter(logging.Formatter):
             value = getattr(record, key, None)
             if value is not None:
                 log[key] = value
+        if record.exc_info:
+            log["error"] = self.formatException(record.exc_info)
         return json.dumps(log)
 
 
 def configure_logging() -> None:
     handler = logging.StreamHandler()
     handler.setFormatter(JsonFormatter())
-    logging.basicConfig(level=logging.INFO, handlers=[handler])
+    logging.basicConfig(level=logging.INFO, handlers=[handler], force=True)

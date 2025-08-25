@@ -1,7 +1,10 @@
 import httpx
+import json
 import logging
 import pytest
 
+from app.core.logging import JsonFormatter
+from app.core.tracing import trace_id_var
 from app.services.providers.andreani import AndreaniProvider
 from app.services.providers.base import ProviderError
 
@@ -66,10 +69,19 @@ async def test_andreani_provider_raises_provider_error(monkeypatch, caplog):
     monkeypatch.setattr(httpx, "AsyncClient", DummyAsyncClient)
 
     provider = AndreaniProvider()
+    token = trace_id_var.set("test-trace")
 
     with caplog.at_level(logging.ERROR):
+        caplog.handler.setFormatter(JsonFormatter())
         with pytest.raises(ProviderError) as exc:
             await provider.track("CODE123")
 
+    trace_id_var.reset(token)
+
     assert isinstance(exc.value.__cause__, httpx.RequestError)
-    assert any("Andreani request failed" in record.message for record in caplog.records)
+
+    log = caplog.text.strip().splitlines()[-1]
+    entry = json.loads(log)
+    assert entry["message"] == "Andreani request failed"
+    assert "RequestError" in entry["error"]
+    assert entry["trace_id"] == "test-trace"
